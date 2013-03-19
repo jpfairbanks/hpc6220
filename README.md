@@ -63,3 +63,6 @@ Date        Task
 Well I could provide tools that do not provide significant speedup. Hopefully this would be due to limitations in the Python interpreter and will improve as the interpreter improves.
 Another risk is that of not finishing all of the goals that I have outlined. Going from map-reduce parallelism up to BSP is a large range. Perhaps I should just focus on getting up to the array scans.
 # References
+http://ipython.org/ipython-doc/dev/parallel/parallel_intro.html
+http://ipython.org/ipython-doc/dev/parallel/parallel_demos.html#parallel-examples
+https://www.cs.cmu.edu/~blelloch/papers/Ble90.pdf
