@@ -15,7 +15,6 @@ I will be investigating these algorithms.
     - Matrix Vector Product
     - Sparse MatVec
     - PageRank for CSR Graph
-    
 
 I think that making these algorithms accessibles as function calls to the python programmers 
 will enable them to take advantage of multicore architectures without having to develop in a 
