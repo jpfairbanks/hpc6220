@@ -65,3 +65,4 @@ Another risk is that of not finishing all of the goals that I have outlined. Goi
 http://ipython.org/ipython-doc/dev/parallel/parallel_intro.html
 http://ipython.org/ipython-doc/dev/parallel/parallel_demos.html#parallel-examples
 https://www.cs.cmu.edu/~blelloch/papers/Ble90.pdf
+
