@@ -6,8 +6,26 @@ import multiprocessing
 from multiprocessing import Process
 sys.path.append('test_harness')
 from timedict import timedict
+from array import array
 
-# You need to do this to a function that expects two elements
+def serial_scan(seq, ):
+    #print('one iter of serial_scan')
+    #print(type(seq))
+    #print(seq[0])
+    y = array('d', seq)
+    for i in range(1,len(seq),1):
+        y[i] = y[i-1] + y[i]
+    return y
+
+def serial_shift(arg):
+    """ inplace operation on seq"""
+    seq   = arg[0]
+    const = arg[1]
+    for i in seq:
+        i+=const
+    return seq
+
+# You need to do this to a function that expects two arguments
 def star_add(opperands):
     """Wrap operation.add so that it takes a tuple.
 
@@ -84,6 +102,23 @@ def packed_reduction(pool, oper, seq, NP):
     parts = pool.map(oper, seq)
     total_sum = oper(parts)
     return total_sum
+
+def packed_scan(pool, oper, seq, NP):
+    """A reduction tree implementation using pool as the parallel workers
+    for an arbitrary reduction operator.
+
+    :pool: a pool of workers.
+    :oper: takes a sequence and returns a single item.
+    :seq: The sequence to reduce, it will not be copied
+    :NP: The number of processing elements
+    :returns: The sum of seq.
+
+    """
+    parts = pool.map(oper, seq)
+    addins = oper([p[-1] for p in parts])
+    args = zip(parts, addins)
+    prefixes = pool.map(serial_shift, args)
+    return prefixes
 
 if __name__ == '__main__':
     print("this is a library not a main")
