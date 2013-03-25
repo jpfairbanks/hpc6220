@@ -21,8 +21,8 @@ def serial_shift(arg):
     """ inplace operation on seq"""
     seq   = arg[0]
     const = arg[1]
-    for i in seq:
-        i+=const
+    for i in range(len(seq)):
+        seq[i]+=const
     return seq
 
 # You need to do this to a function that expects two arguments
@@ -115,7 +115,7 @@ def packed_scan(pool, oper, seq, NP):
 
     """
     parts = pool.map(oper, seq)
-    addins = oper([p[-1] for p in parts])
+    addins = oper([0] + [p[-1] for p in parts])
     args = zip(parts, addins)
     prefixes = pool.map(serial_shift, args)
     return prefixes
