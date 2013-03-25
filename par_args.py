@@ -16,4 +16,7 @@ def get_args():
     parser.add_argument('-t', '--tree',
             action='store_true',
             help="use the divide and conquor tree approach")
+    parser.add_argument('-v', '--verbose',
+            action='store_true',
+            help="verbose mode print more stuff")
     return parser.parse_args()
