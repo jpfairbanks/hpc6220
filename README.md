@@ -58,7 +58,9 @@ Date        Task
 04-05       Implementation of Scans
 04-14       Implementation of CSR MatVec
 04-20       Begin Writing
+
 # Risks
+
 Well I could provide tools that do not provide significant speedup. Hopefully this would be due to limitations in the Python interpreter and will improve as the interpreter improves.
 Another risk is that of not finishing all of the goals that I have outlined. Going from map-reduce parallelism up to BSP is a large range. Perhaps I should just focus on getting up to the array scans.
 # References

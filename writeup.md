@@ -65,21 +65,27 @@ Should you do the log(P) depth solution where each processor adds the adjacent
 elements of the array together until only one element remains? Or should the
 work be cut up into the largest possible serial chunks to be processed
 sequentially. The flat approach with each of the $p$ processors conquering
-$n/p$ of the work performs better as the size of the partitions increases. This
+$\frac{n}{p}$ of the work performs better as the size of the partitions increases. This
 means that for a fixed $p$ more work elements means better speedup. I believe
 this has to do with the overhead associated with forking OS level processes and
 function call overhead.
 
 I implemented both a reduction tree and a partitioned algorithm for reduction.
 The reduction tree takes the even and odd elements and combines them in pairs.
-Each pair tmp[i] = evens[i] + odds[i] is a separate task, both logically and
+Each pair 
+
+~~~~
+    tmp[i] = evens[i] + odds[i]
+~~~~
+
+is a separate task, both logically and
 from the perspective of the process pool. This is the PRAM algorithm where we
 assume that the number of processors can grow to be as large as possible. 
 However in reality the number of processors is physically limited and this approach
 pays a large penalty for forming these fine grained tasks.
 
-The partitioning algorithm takes a different approach. Since we know the number of processors 
-is known, we can partition the set of inputs contiguously before we start to operate concurrently. 
+The partitioning algorithm takes a different approach. Since we know the number of processors,
+we can partition the set of inputs contiguously before we start to operate concurrently. 
 Each part is given to a single process which can apply the reduction in serial.
 These processes return a single value for their entire segment. Since the 
 number of processes is small these $p$ values are reduced in serial by the calling process.
@@ -109,8 +115,11 @@ arithmetic operations this should not be an issue.
 
 # Dense Matrix Vector Multiplication
 
-The clear winner is serial numpy. There is just no way to be optimized C BLAS
+The clear winner is serial numpy. There is just no way to beat optimized C BLAS
 for dense numerical linear algebra.
+
+#Bibliography
+http://www.dabeaz.com/python/UnderstandingGIL.pdf
 
 # Notes
 
