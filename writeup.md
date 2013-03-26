@@ -118,6 +118,16 @@ arithmetic operations this should not be an issue.
 The clear winner is serial numpy. There is just no way to beat optimized C BLAS
 for dense numerical linear algebra.
 
+# Map Reduce details
+One of the benefits of Map Reduce programming is that it is deadlock free.
+Because processes do not explicitly wait on other processes they cannot create a cycle of waits that
+cannot be resolved.
+A Map Reduce programmer can create an iterative algorithm that does
+not converge but they cannot create a situation where processes are waiting because of dependence. 
+As any dependent data will be computed at the conclusion of the previous map or reduce phase.
+We avoid a common problem with Hadoop that forces a reduce phase after every map phase. 
+The serial controller logic will not be restricted in any way.
+
 #Bibliography
 http://www.dabeaz.com/python/UnderstandingGIL.pdf
 
