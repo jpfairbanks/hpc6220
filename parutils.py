@@ -1,3 +1,4 @@
+from __future__ import print_function
 import operator as op
 import math
 import numpy as np
@@ -7,12 +8,13 @@ from multiprocessing import Process
 sys.path.append('test_harness')
 from timedict import timedict
 from array import array
-
-def serial_scan(seq, ):
+vprint = lambda s,o: print('{0}:\n{1}'.format(s,o))
+def serial_scan(seq, dtype='d'):
     #print('one iter of serial_scan')
     #print(type(seq))
+    #print(seq.dtype)
     #print(seq[0])
-    y = array('d', seq)
+    y = array(dtype, seq)
     for i in range(1,len(seq),1):
         y[i] = y[i-1] + y[i]
     return y
@@ -25,6 +27,46 @@ def serial_shift(arg):
         seq[i]+=const
     return seq
 
+def serial_pack(arg):
+    """Pack seq into an array if mask[i] = 1
+    :arg: a tuple containing the following
+        :seq: an array of elements
+        :mask: an array of flags 1 means include 0 means ignore
+    :returns: the result of the pack as an array
+
+    mask is not checked for bools if there are entries that are not 
+    0,1 in the mask the behavior will be bad.
+
+    """
+    seq, mask = arg[0], arg[1]
+    #vprint('mask', mask.tostring())
+    #print(mask)
+    indices = serial_scan(mask, dtype='i')
+    indices = serial_shift((indices,-1))# dtype='i')
+    #vprint('indices', indices)
+    num_elts = indices[-1]
+    #vprint('num_elts', num_elts)
+    y = array('d', range(int(num_elts)+1))
+    #vprint('y',y)
+    for i in range(0,len(seq),1):
+        if mask[i]:
+            y[indices[i]] = seq[i]
+    return y
+
+def serial_concat(seq):
+    """reverses the partition function
+
+    :seq: contains a sequence of sequences 
+    :returns: @todo
+
+    """
+    dtype = seq[0].typecode
+    sizes = map(len,seq)
+    N = sum(sizes)
+    out = array(dtype, seq[0])
+    for i in range(1,len(seq)):
+        out.extend(seq[i])
+    return out
 # You need to do this to a function that expects two arguments
 def star_add(opperands):
     """Wrap operation.add so that it takes a tuple.
@@ -108,8 +150,8 @@ def packed_scan(pool, oper, seq, NP):
     for an arbitrary reduction operator.
 
     :pool: a pool of workers.
-    :oper: takes a sequence and returns a single item.
-    :seq: The sequence to reduce, it will not be copied
+    :oper: takes a sequence and returns the scan of it
+    :seq: The sequence to reduce, it will not be copied already partitioned by partition()
     :NP: The number of processing elements
     :returns: The sum of seq.
 
@@ -119,6 +161,17 @@ def packed_scan(pool, oper, seq, NP):
     args = zip(parts, addins)
     prefixes = pool.map(serial_shift, args)
     return prefixes
+
+def pack(pool, seq, mask, num_procs=1):
+    """Returns a packed array from applyin mask to seq
+
+    :seq: @todo
+    :mask: @todo
+    :returns: @todo
+
+    """
+    parts = pool.map(serial_pack, zip(seq, mask))
+    return parts
 
 if __name__ == '__main__':
     print("this is a library not a main")
