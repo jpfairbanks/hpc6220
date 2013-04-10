@@ -39,15 +39,13 @@ def serial_pack(arg):
 
     """
     seq, mask = arg[0], arg[1]
-    #vprint('mask', mask.tostring())
+    assert(len(seq) == len(mask)) , "len(seq)!=len(mask)"
+    #vprint('mask', "")
     #print(mask)
     indices = serial_scan(mask, dtype='i')
     indices = serial_shift((indices,-1))# dtype='i')
-    #vprint('indices', indices)
     num_elts = indices[-1]
-    #vprint('num_elts', num_elts)
     y = array('d', range(int(num_elts)+1))
-    #vprint('y',y)
     for i in range(0,len(seq),1):
         if mask[i]:
             y[indices[i]] = seq[i]
