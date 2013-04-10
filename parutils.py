@@ -53,6 +53,22 @@ def serial_pack(arg):
             y[indices[i]] = seq[i]
     return y
 
+def serial_inner_product(arg):
+    """Pack seq into an array if mask[i] = 1
+    :arg: a tuple containing the following
+        :xvec: an array of elements
+        :yvec: another array of elements
+    :returns: the sum of the elementwise products
+
+    asserts that the len's are the same.
+
+    """
+    xvec, yvec = arg[0], arg[1]
+    assert(len(xvec) == len(yvec)) , "len(x) != len(y)"
+    prods = ( xvec[i] * yvec[i] for i in range(len(xvec)))
+    S = sum(prods)
+    return S
+
 def serial_concat(seq):
     """reverses the partition function
 
@@ -172,6 +188,21 @@ def pack(pool, seq, mask, num_procs=1):
     """
     parts = pool.map(serial_pack, zip(seq, mask))
     return parts
+
+def inner_product(pool, xvec, yvec, num_procs=1):
+    """Performs the calculation xvec.T * yvec correpsonding to the linear algebra
+    standard inner product. also know as the dot product of two vectors.
+
+    :pool: @todo
+    :xvec: @todo
+    :yvec: @todo
+    :num_procs: @todo
+    :returns: the final sum 
+
+    """
+    parts = pool.map(serial_inner_product, zip(xvec, yvec))
+    ans =  sum(parts)
+    return ans
 
 if __name__ == '__main__':
     print("this is a library not a main")
