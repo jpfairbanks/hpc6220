@@ -9,7 +9,7 @@ from timedict import timedict
 
 
 # The mains to compare, partitions, divide and conquor, serial
-def flat_main(pool, num_procs):
+def flat_main(pool, SEQ, num_procs):
     """Using multiproccessing to see if it is faster
     :returns: The sum over SEQ
 
@@ -18,7 +18,7 @@ def flat_main(pool, num_procs):
     count   = parutils.packed_reduction(pool, sum, arrays, num_procs)
     return count
 
-def tree_main(pool, num_procs):
+def tree_main(pool, SEQ, num_procs):
     """Using multiproccessing to see if it is faster
     Try using the recursive tree approach to the reduction.
     :returns: The sum over SEQ
@@ -28,7 +28,7 @@ def tree_main(pool, num_procs):
     count = parutils.reduction_tree(pool, parutils.star_add, answers, NP)
     return count
 
-def serial_main():
+def serial_main(SEQ):
     """Does the main without any parallel overhead
     :returns: the sum over the array
 
@@ -36,11 +36,9 @@ def serial_main():
     count = sum(SEQ)
     return count
 
-if __name__ == '__main__':
+def big_main(args):
     # Setup
-
     timer = timedict()
-    args = par_args.get_args()
     scale = args.scale
     NP = args.procs
     par_name = 'Tree'+str(NP)
@@ -55,27 +53,40 @@ if __name__ == '__main__':
     # Testing
 
     timer.tic(0)
-    count = serial_main()
+    count = serial_main(SEQ)
     timer.toc(0)
     print('serial')
 
-    timer.tic(par_name)
-    tree_count = -1
     if args.tree:
-        tree_count = tree_main(pool, NP)[0]
-    timer.toc(par_name)
-    print('tree')
+        timer.tic(par_name)
+        tree_count = tree_main(pool, SEQ, NP)[0]
+        timer.toc(par_name)
+        print('tree')
 
     timer.tic(flat_name)
-    np_count = flat_main(pool, NP)
+    np_count = flat_main(pool, SEQ, NP)
     timer.toc(flat_name)
     print('flat')
 
     # Reporting
+    print('sum:%s,%s' % (count, np_count))
 
-    print('sum:%s,%s,%s' % (count, tree_count, np_count))
+    eps = .00000001
+    assert count-np_count<eps, "we got the wrong answer"
+    if args.tree:
+        print('sum:%s,%s' % (count, tree_count))
+        assert count == tree_count
+    
     print(repr(timer.ends))
-    print('Tree speedup: %f' %
-	    (timer.ends[0]/timer.ends[par_name]))
+    if args.tree:
+        print('Tree speedup: %f' %
+                (timer.ends[0]/timer.ends[par_name]))
     print('Flat speedup: %f' %
 	    (timer.ends[0]/timer.ends[flat_name]))
+    return (scale, NP, timer[0], timer[flat_name])
+
+if __name__ == '__main__':
+
+    args = par_args.get_args()
+    ans = big_main(args)
+    print(ans)
