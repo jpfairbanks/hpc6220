@@ -29,7 +29,7 @@ def serial_main(SEQ, mask):
     """
     result = parutils.serial_pack((SEQ, mask))
     return result
-def big_main():
+def big_main(args):
     """Does the setup and teardown to test both methods
     
     """
@@ -71,8 +71,9 @@ def big_main():
     flat_speedup = timer.ends[0]/timer.ends[flat_name]
     print('Flat speedup: %f' %
 	    (flat_speedup))
-    return flat_speedup
+    return (scale, NP, timer[0], timer[flat_name])
 
 if __name__ == '__main__':
     args = par_args.get_args()
-    big_main()
+    ans = big_main(args)
+    print(ans)

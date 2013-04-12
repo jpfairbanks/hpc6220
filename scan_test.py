@@ -34,6 +34,7 @@ def serial_main(SEQ):
     return count
 
 def big_main(args):
+    timer = timedict()
     scale = args.scale
     NP = args.procs
     if args.verbose:
@@ -74,7 +75,6 @@ def big_main(args):
     return (scale,NP, timer[0], timer[flat_name])
 if __name__ == '__main__':
     # Setup
-    timer = timedict()
     args = par_args.get_args()
     ans = big_main(args)
     print(ans)
