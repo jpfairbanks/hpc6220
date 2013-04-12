@@ -113,6 +113,14 @@ There is no attempt to load balance the workers in the process pool, and this wi
 problems when the scan operation is something that has a high variance in run time. However for 
 arithmetic operations this should not be an issue.
 
+There are implementation differences between the Python2 and Python3 interpreters. One difference that I found to impact performance is the fact that the zip builtin, which takes two sequences and
+bindes them together into one sequence of pairs, makes a list in Python2 but a generator in Python3. 
+This leads to a slowdown in `SCAN` because the phase where the offsets are computed and passed to 
+the phase that propagates the offsets, uses a zip in order to interface with the process pool. This 
+is one of the small features of Python that makes writing High Performance Code less straightforward
+than in C. In order to crank out the fastest Python code you must be aware about how the builtin 
+functions and data structures are implemented.
+
 ## Pack
 The pack opertion uses the primitive scan in order to identify the final indices of the data in the 
 packed output. Since we are using a partitioned approach we do not need the indices to be propagated
