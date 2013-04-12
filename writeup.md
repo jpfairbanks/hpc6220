@@ -113,6 +113,14 @@ There is no attempt to load balance the workers in the process pool, and this wi
 problems when the scan operation is something that has a high variance in run time. However for 
 arithmetic operations this should not be an issue.
 
+## Pack
+The pack opertion uses the primitive scan in order to identify the final indices of the data in the 
+packed output. Since we are using a partitioned approach we do not need the indices to be propagated
+this saves the second pass over the data that we make in the general scan. 
+
+## Inner Product
+This problem is interesting because we increase the flop to mop ratio. This should be helpful for 
+achieving scalability. 
 # Dense Matrix Vector Multiplication
 
 The clear winner is serial numpy. There is just no way to beat optimized C BLAS
