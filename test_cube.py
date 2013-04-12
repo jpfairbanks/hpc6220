@@ -1,5 +1,5 @@
 from __future__ import print_function
-import inner_product_test as mod
+from importlib import import_module
 import par_args
 
 avg = lambda s: sum(s)/len(s)
@@ -33,12 +33,17 @@ if __name__ == '__main__':
     args = par_args.get_args()
     scales    = [15,20]#,25]
     cpucounts = [2,3,4,6,8]
-    
+    modulenames = ["inner_product_test",]
+    modules = map(import_module, modulenames, [''])
+    print(modules)
+    assert all([m.__name__ == name for m,name in zip(modules, modulenames)]), "we messed up the imports"
+    mod = modules[0]
     main_func = get_main(mod)
     print(mod.__name__)
     rows = []
     for s in scales:
         args.scale = s
+        print("scale: {0}".format(s))
         for NP in cpucounts:
             args.procs = NP
             rows.append(main_func(args))
