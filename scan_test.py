@@ -9,20 +9,23 @@ from timedict import timedict
 
 
 # The mains to compare, partitions, divide and conquor, serial
-def flat_main(pool, num_procs):
+def flat_main(pool, SEQ, num_procs):
     """Using multiproccessing to see if it is faster
     :returns: The sum over SEQ
 
     """
     arrays  = parutils.partition(SEQ, num_procs)
     count   = parutils.packed_scan(pool, parutils.serial_scan, arrays, num_procs)
+    return count
+
+def unpartition(count):
     initial = count[0]
     for s in count[1:]:
         initial.extend(s)
     return initial
 
 
-def serial_main():
+def serial_main(SEQ):
     """Does the main without any parallel overhead
     :returns: the sum over the array
 
@@ -30,10 +33,7 @@ def serial_main():
     count = parutils.serial_scan(SEQ)
     return count
 
-if __name__ == '__main__':
-    # Setup
-    timer = timedict()
-    args = par_args.get_args()
+def big_main(args):
     scale = args.scale
     NP = args.procs
     if args.verbose:
@@ -51,19 +51,30 @@ if __name__ == '__main__':
     # Testing
 
     timer.tic(0)
-    count = serial_main()
+    sans = serial_main(SEQ)
     timer.toc(0)
     print('serial')
 
     timer.tic(flat_name)
-    np_count = flat_main(pool, NP)
+    pans = flat_main(pool, SEQ, NP)
     timer.toc(flat_name)
+    pans = unpartition(pans)
     print('flat')
 
     # Reporting
 
     #print('sum:%s,%s,%s' % (count, tree_count, np_count))
-    print('Same result: %s' % (np_count == count))
+    assert all([sa==pa for sa, pa in zip(sans, pans)]), 'we got the wrong answer'
+    print('Same result: %s' % (sans == pans))
     print(repr(timer.ends))
     print('Flat speedup: %f' %
 	    (timer.ends[0]/timer.ends[flat_name]))
+    pool.close()
+    pool.join()
+    return (scale,NP, timer[0], timer[flat_name])
+if __name__ == '__main__':
+    # Setup
+    timer = timedict()
+    args = par_args.get_args()
+    ans = big_main(args)
+    print(ans)
