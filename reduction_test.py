@@ -71,7 +71,7 @@ def big_main(args):
     # Reporting
     print('sum:%s,%s' % (count, np_count))
 
-    eps = .00000001
+    eps = .00001
     assert count-np_count<eps, "we got the wrong answer"
     if args.tree:
         print('sum:%s,%s' % (count, tree_count))

@@ -8,6 +8,7 @@ cpucounts = [2,3,4,6,8]
 modulenames = ["inner_product_test",
                "pack_test",
                "scan_test",
+               "reduction_test",
               ]
 avg = lambda s: sum(s)/len(s)
 def make_plot():
