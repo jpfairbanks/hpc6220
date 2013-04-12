@@ -30,17 +30,17 @@ def serial_main(SEQ, mask):
     """
     result = parutils.serial_inner_product((SEQ, mask))
     return result
-def big_main():
+def big_main(args):
     """Does the setup and teardown to test both methods
     
     """
     # Setup
     timer = timedict()
-    scale = args.scale
     NP = args.procs
+    scale = args.scale
     if args.verbose:
         if args.tree:
-            print('no tree method for scans because they are too slow')
+            print('no tree method for inner_product because they are too slow')
     flat_name = 'Flat'+str(NP)
     timer.tic('spawning pool')
     pool = multiprocessing.Pool(processes=NP)
@@ -57,24 +57,30 @@ def big_main():
     timer.tic(0)
     arr = serial_main(SEQ, mask)
     timer.toc(0)
-    print('serial')
+    if args.verbose:
+        print('serial done')
 
     timer.tic(flat_name)
     par_arr = flat_main(pool,SEQ, mask, NP)
     timer.toc(flat_name)
-    print('flat')
+    #print('flat')
 
     # Reporting
 
-    #print('sum:%s,%s,%s' % (count, tree_count, np_count))
     assert (SEQ*mask).sum() == arr, "we did not get the right answer"
-    print('Same result: %s' % (par_arr == arr))
-    print(repr(timer.ends))
+    #print('Same result: %s' % (par_arr == arr))
+    #print(repr(timer.ends))
     flat_speedup = timer.ends[0]/timer.ends[flat_name]
-    print('Flat speedup: %f' %
-	    (flat_speedup))
-    return flat_speedup
+    #print('Flat speedup: %f' %
+    #	    (flat_speedup))
+    pool.close()
+    pool.join()
+    ans = (scale, NP, timer[0], timer[flat_name])
+    return ans
 
 if __name__ == '__main__':
     args = par_args.get_args()
-    big_main()
+    scale = args.scale
+    NP = args.procs
+    ans = big_main(args)
+    print("{0},{1},{2},{3}".format(*ans))
