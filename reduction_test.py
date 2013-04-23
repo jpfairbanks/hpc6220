@@ -72,7 +72,7 @@ def big_main(args):
     print('sum:%s,%s' % (count, np_count))
 
     eps = .00001
-    assert count-np_count<eps, "we got the wrong answer"
+    assert count-np_count<eps, "we got the wrong answer %f != %f" %(count, np_count)
     if args.tree:
         print('sum:%s,%s' % (count, tree_count))
         assert count == tree_count

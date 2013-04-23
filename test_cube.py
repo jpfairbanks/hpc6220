@@ -1,5 +1,9 @@
 from __future__ import print_function
-from importlib import import_module
+try:
+     from importlib import import_module
+except:
+     print("we are running 2.6 or older")
+     import_module = __import__
 import par_args
 
 data_dir = './data'
