@@ -145,7 +145,7 @@ def partition(seq, NP):
     return arrays
 
 def packed_reduction(pool, oper, seq, NP):
-    """A reduction tree implementation using pool as the parallel workers
+    """A reduction implementation using pool as the parallel workers
     for an arbitrary reduction operator.
 
     :pool: a pool of workers.
