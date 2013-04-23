@@ -1,3 +1,6 @@
+# Introduction
+The goal of this project is to make parallel algorithms more accesible through an easy to use Python library
+for some basic tasks. The pursuit of this end also created some knowledge and intuition about the performance aspects of parallel programing in python. The fact that we are using OS level processes and not pthreads or OpenMP thread pools, means that some computations must be restructured in order to achieve performance. The main note of this is that accessing the data in order on a per process basis is very important. 
 # Process based parallelism using Multiprocessing
 In order to expand the accessibility of parallel algorithms
 my project creates some basic primitives for parallel algorithms in Python
@@ -129,6 +132,7 @@ this saves the second pass over the data that we make in the general scan.
 ## Inner Product
 This problem is interesting because we increase the flop to mop ratio. This should be helpful for 
 achieving scalability. 
+
 # Dense Matrix Vector Multiplication
 
 The clear winner is serial numpy. There is just no way to beat optimized C BLAS
@@ -159,3 +163,4 @@ Concurrent Futures allow for a higher level api but create unexpected behavior.
 Use this to count words in some big document collection.
 http://docs.python.org/2/library/collections.html#collections.Counter
 http://www.dalkescientific.com/writings/diary/archive/2012/01/19/concurrent.futures.html
+
