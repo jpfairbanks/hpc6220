@@ -46,7 +46,7 @@ def big_main(args):
     timer.tic('spawning pool')
     pool = multiprocessing.Pool(processes=NP)
     timer.toc('spawning pool')
-    SEQ = random.random_integers(2**scale)
+    SEQ = random.random_integers(0,10,2**scale)
     print(SEQ)
 
 
