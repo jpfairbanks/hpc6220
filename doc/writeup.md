@@ -71,7 +71,7 @@ As expected the speedup of this scan is approximately a factor of two worse than
 
 The partitions are done evenly and are the same in the first and second pass over the data. There is no attempt to load balance the workers in the process pool, and this will lead to scalability problems when the scan operation is something that has a high variance in run time. However for arithmetic operations this should not be an issue.
 
-There are implementation differences between the Python2 and Python3 interpreters. One difference that I found to impact performance is the fact that the zip builtin, which takes two sequences and binds them together into one sequence of pairs, makes a list in Python2 but a generator in Python3. This leads to a slower `SCAN` because the phase where the offsets are computed and passed to the phase that propagates the offsets, uses a zip in order to interface with the process pool. This is one of the small features of Python that makes writing High Performance Code less straightforward than in C. In order to crank out the fastest Python code one must be aware about how the builtin functions and data structures are implemented.
+There are implementation differences between the Python2 and Python3 interpreters. One difference that I found to impact performance is the fact that the zip builtin, which takes two sequences and binds them together into one sequence of pairs, makes a list in Python2 but a generator in Python3. This leads to a slower `SCAN` because the phase where the offsets are computed and passed to the phase that propagates the offsets, uses a zip in order to interface with the process pool. This is one of the features of Python that makes writing high performance code less straightforward than writing them in C. In order to crank out the fastest Python code one must be aware about how the builtin functions and data structures are implemented.
 
 Pack
 ----
@@ -138,9 +138,22 @@ List comprehensions are computed with eager evaluation, which produces the follo
 This is an example of how performance considerations are not as straightforward when programming in a higher level language like Python, when compared
 to writing C code. 
 
-Here we can see that there is not a vast difference between the two implementations. 
+Here we can see that there is not a vast difference in performance between the two implementations.
 
 ![Compare lazy evaluation to eager evaluation](./figures/inner_product_compare_speedup_mirasol.png)
+
+Results
+=======
+
+We can compare the different algorithms to each other on the same problem size on the same machine. The follow results are from running the algorithms on *Mirasol* with
+cores counts 2, 4, 8, 16, 32. The problem is sized $2^{25}$, ie. scale 25, with scan, pack, and inner product using twice the memory because they are binary operations.
+The machine is an Intel Westmere with 4 sockets each with 10 cores each. I did not investigate any hyper-threading scenarios. One issue with 
+using a large system like *Mirasol* is that the maximum memory footprint is of multiprocessing Array class is $2^{32}$ even though this is a tiny fraction of the 
+256GB of main memory that *Mirasol* possesses. Thus the entire data set can fit into the memory of one socket of *Mirasol*. However Python does not give control of memory allocation 
+at a granularity that can allow me to explore NUMA. One down side of higher level languages is that certain processes are black boxes handled by the runtime. 
+Even if we trust the runtime to do the right thing, we would like to perturb it to measure the effects of different runtime design decisions. This investigation would be
+interesting, but beyond the scope of the project.
+
 
 ![Speedup of various algorithms](./figures/speedup_mirasol.png)
 
