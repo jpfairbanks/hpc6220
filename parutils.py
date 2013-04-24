@@ -52,7 +52,8 @@ def serial_pack(arg):
     return y
 
 def serial_inner_product(arg):
-    """Pack seq into an array if mask[i] = 1
+    """Compute an inner product by doing  the multiplications as needed for the summation
+    This function uses less scratch memory than serial_inner_product_eager.
     :arg: a tuple containing the following
         :xvec: an array of elements
         :yvec: another array of elements
@@ -64,6 +65,23 @@ def serial_inner_product(arg):
     xvec, yvec = arg[0], arg[1]
     assert(len(xvec) == len(yvec)) , "len(x) != len(y)"
     prods = ( xvec[i] * yvec[i] for i in range(len(xvec)))
+    S = sum(prods)
+    return S
+
+def serial_inner_product_eager(arg):
+    """Compute an inner product by doing all of the multiplications before any of the additions
+    This function uses more scratch memory than serial_inner_product.
+    :arg: a tuple containing the following
+        :xvec: an array of elements
+        :yvec: another array of elements
+    :returns: the sum of the elementwise products
+
+    asserts that the len's are the same.
+
+    """
+    xvec, yvec = arg[0], arg[1]
+    assert(len(xvec) == len(yvec)) , "len(x) != len(y)"
+    prods = [ xvec[i] * yvec[i] for i in range(len(xvec))]
     S = sum(prods)
     return S
 
