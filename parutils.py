@@ -220,5 +220,20 @@ def inner_product(pool, xvec, yvec, num_procs=1):
     ans =  sum(parts)
     return ans
 
+def inner_product_eager(pool, xvec, yvec, num_procs=1):
+    """Performs the calculation xvec.T * yvec correpsonding to the linear algebra
+    standard inner product. also know as the dot product of two vectors.
+
+    :pool: The pool of workers that will perform the map
+    :xvec: The sequence of xvectors
+    :yvec: The sequence of yvectors
+    :num_procs: The number of processors you would like to use just for interface compat. 
+    :returns: the final sum 
+
+    """
+    parts = pool.map(serial_inner_product_eager, zip(xvec, yvec))
+    ans =  sum(parts)
+    return ans
+
 if __name__ == '__main__':
     print("this is a library not a main")
