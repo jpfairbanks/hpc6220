@@ -67,18 +67,18 @@ Scans
 
 I built a function that takes a serial scan and converts it to a parallel scan. Because of the poor performance of the divide and conquer approach to reduction, I chose to implement only the partitioning based scan. The partitioning approach is to take the problem and cut it into $p$ pieces that can be operated on independently in serial. Then we combine these results by propagating an update across each piece. In this case the serial process is a serial scan, and the updates are created by scanning the terminal elements of each piece. This produces a two phase algorithm.
 
-As expected the scalability of this scan is approximately a factor of two worse than the partitioned reducer. This is expected because there is a second pass over the data in order to propagate the updates. This second pass means that the algorithm has a factor of 2 more work than the serial algorithm which means that scalability is decreased by that same factor of 2.
+As expected the speedup of this scan is approximately a factor of two worse than the partitioned reducer. This is expected because there is a second pass over the data in order to propagate the updates. This second pass means that the algorithm has a factor of 2 more work than the serial algorithm which means that scalability is decreased by that same factor of 2.
 
 The partitions are done evenly and are the same in the first and second pass over the data. There is no attempt to load balance the workers in the process pool, and this will lead to scalability problems when the scan operation is something that has a high variance in run time. However for arithmetic operations this should not be an issue.
 
-There are implementation differences between the Python2 and Python3 interpreters. One difference that I found to impact performance is the fact that the zip builtin, which takes two sequences and binds them together into one sequence of pairs, makes a list in Python2 but a generator in Python3. This leads to a slowdown in `SCAN` because the phase where the offsets are computed and passed to the phase that propagates the offsets, uses a zip in order to interface with the process pool. This is one of the small features of Python that makes writing High Performance Code less straightforward than in C. In order to crank out the fastest Python code you must be aware about how the builtin functions and data structures are implemented.
+There are implementation differences between the Python2 and Python3 interpreters. One difference that I found to impact performance is the fact that the zip builtin, which takes two sequences and binds them together into one sequence of pairs, makes a list in Python2 but a generator in Python3. This leads to a slower `SCAN` because the phase where the offsets are computed and passed to the phase that propagates the offsets, uses a zip in order to interface with the process pool. This is one of the small features of Python that makes writing High Performance Code less straightforward than in C. In order to crank out the fastest Python code one must be aware about how the builtin functions and data structures are implemented.
 
 Pack
 ----
 
 The pack operation uses the primitive scan in order to identify the final indices of the data in the packed output. Since we are using a partitioned approach we do not need the indices to be propagated this saves the second pass over the data that we make in the general scan.
 
-We can see from the results on Mirasol that this second pass to propagate the parts of the scan causes the decrease in performance.
+We can see from the results on *Mirasol* that this second pass to propagate the parts of the scan causes the decrease in performance.
 One scalability issue with this partitioned approach that effects pack more than the other primitives is that the locations of non-zero entries in the mask will have an impact on the run time of each processor. Processors that are assigned many non-zero entries will perform many memory requests which will not be load balanced. However we are testing on a uniformly random problem, so this effect should be minimal on average.
 
 Inner Product
@@ -138,6 +138,8 @@ List comprehensions are computed with eager evaluation, which produces the follo
 This is an example of how performance considerations are not as straightforward when programming in a higher level language like Python, when compared
 to writing C code. 
 
+Here we can see that there is not a vast difference between the two implementations. 
+
 ![Compare lazy evaluation to eager evaluation](./figures/inner_product_compare_speedup_mirasol.png)
 
 ![Speedup of various algorithms](./figures/speedup_mirasol.png)
@@ -145,12 +147,12 @@ to writing C code.
 Dense Matrix Vector Multiplication
 ==================================
 
-The clear winner is serial numpy. There is just no way to beat optimized C BLAS for dense numerical linear algebra.
+The clear winner is serial Numpy. There is just no way to beat optimized C BLAS for dense numerical linear algebra.
 
 Map Reduce details
 ==================
 
-One of the benefits of Map Reduce programming is that it is deadlock free. Because processes do not explicitly wait on other processes they cannot create a cycle of waits that cannot be resolved. A Map Reduce programmer can create an iterative algorithm that does not converge but they cannot create a situation where processes are waiting because of dependence. As any dependent data will be computed at the conclusion of the previous map or reduce phase. We avoid a common problem with Hadoop that forces a reduce phase after every map phase. The serial controller logic will not be restricted in any way.
+One of the benefits of Map Reduce programming is that it is deadlock free. Because processes do not explicitly wait on other processes they cannot create a cycle of waits that cannot be resolved. A Map Reduce programmer can create an iterative algorithm that does not converge but they cannot create a situation where processes are waiting because of data dependence. We avoid a common problem with Hadoop that forces a reduce phase after every map phase. The serial controller logic will not be restricted in any way.
 
 Conclusions
 ===========
