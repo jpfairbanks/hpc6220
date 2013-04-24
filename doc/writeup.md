@@ -27,17 +27,19 @@ Most of the code presented here uses pool.map(f, args) which takes a function an
 
 A minimal working example of a parallel code in python is displayed below. This code computes the square roots of some small integers. We can see that this is an easy way to access multi-core processors. One benefit of using Python is the ease of passing functions as arguments to other functions. This allows for higher level programming.
 
-        import multiprocessing
-        import math
+~~~~ {#minimalpy .python .numberLines startFrom="1"}
+    import multiprocessing
+    import math
 
-        # make a problem
-        NP = 8
-        f = math.sqrt
-        argument_seq = range(8)
+    # make a problem
+    NP = 8
+    f = math.sqrt
+    argument_seq = range(8)
 
-        # solve it in parallel
-        pool = multiprocessing.Pool(processes=NP)
-        result_seq = pool.map(f, argument_seq)
+    # solve it in parallel
+    pool = multiprocessing.Pool(processes=NP)
+    result_seq = pool.map(f, argument_seq)
+~~~~
 
 For native python
 =================
@@ -86,46 +88,59 @@ This problem is interesting because we increase the flop to mop ratio, which sho
 This code allows us to compare how small differences in Python code might produce large differences in the execution.
 Here is a minimal code for inner product in python
 
-        def serial_inner_product(arg):
-            xvec, yvec = arg[0], arg[1]
-            prods = ( xvec[i] * yvec[i] for i in range(len(xvec)))
-            S = sum(prods)
-            return S
+~~~~ {#naiveippy .python .numberLines startFrom="1"}
+    def serial_inner_product(arg):
+        xvec, yvec = arg[0], arg[1]
+        prods = ( xvec[i] * yvec[i] for i in range(len(xvec)))
+        S = sum(prods)
+        return S
+~~~~
 
 The expression in line 3 is a generator expression. Generators are objects that encapsulates a sequence that is lazily evaluated by the interpreter.
 That is to say that the values are not computed until they are needed for some other expression. In this code the products are needed when the sum() 
 function consumes them in a reduction. Thus this Python code would best be translated to C as:
 
-        double serial_inner_product(double * xvec, double * yvec, int64_t len){
-            double S = 0;
-            for (int64_t i=0; i<len, ++i){
-                S +=(xvec[i] * yvec[i]);
-            }
-            return S;
+~~~~ {#lazyCip .c .numberLines startFrom="1"}
+    double serial_inner_product(double * xvec,
+                                double * yvec,
+                                int64_t len){
+        double S = 0;
+        for (int64_t i=0; i<len, ++i){
+            S +=(xvec[i] * yvec[i]);
         }
+        return S;
+    }
+~~~~
 
 However if we replace the parenthesis in the generator expression with square brackets, then it becomes a list comprehension. 
 List comprehensions are computed with eager evaluation, which produces the following best translation to C.
 
 
-        double serial_inner_product_eager(double * xvec, double * yvec, int64_t len){
-            prods = malloc(len*sizeof(double));
-            double S = 0;
-            for (int64_t i=0; i<len, ++i){
-                prods[i] = (xvec[i] * yvec[i]);
-            }
-            
-            for (int64_t i=0; i<len, ++i){
-                S += prods[i];
-            }
-            
-            free(prods);
-            return S;
+~~~~ {#eagerCip .c .numberLines startFrom="1"}
+    double serial_inner_product_eager(double * xvec,
+                                      double * yvec,
+                                      int64_t len){
+        prods = malloc(len*sizeof(double));
+        double S = 0;
+        for (int64_t i=0; i<len, ++i){
+            prods[i] = (xvec[i] * yvec[i]);
         }
+        
+        for (int64_t i=0; i<len, ++i){
+            S += prods[i];
+        }
+        
+        free(prods);
+        return S;
+    }
+~~~~
 
 This is an example of how performance considerations are not as straightforward when programming in a higher level language like Python, when compared
 to writing C code. 
 
+![Compare lazy evaluation to eager evaluation](./figures/inner_product_compare_speedup_mirasol.png)
+
+![Speedup of various algorithms](./figures/speedup_mirasol.png)
 
 Dense Matrix Vector Multiplication
 ==================================
