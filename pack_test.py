@@ -71,6 +71,8 @@ def big_main(args):
     flat_speedup = timer.ends[0]/timer.ends[flat_name]
     print('Flat speedup: %f' %
 	    (flat_speedup))
+    pool.close()
+    pool.join()
     return (scale, NP, timer[0], timer[flat_name])
 
 if __name__ == '__main__':

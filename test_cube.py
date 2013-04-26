@@ -7,8 +7,8 @@ except:
 import par_args
 
 data_dir = './data'
-scales    = [15,20]#,25]
-cpucounts = [2,3,4,6,8]
+scales    = [15,20,24]
+cpucounts = [2,4,8]
 modulenames = ["inner_product_test",
                "pack_test",
                "scan_test",

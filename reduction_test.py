@@ -46,6 +46,7 @@ def big_main(args):
     timer.tic('spawning pool')
     pool = multiprocessing.Pool(processes=NP)
     timer.toc('spawning pool')
+    #SEQ = random.random(2**scale)
     SEQ = random.random_integers(0,10,2**scale)
     print(SEQ)
 
@@ -83,10 +84,16 @@ def big_main(args):
                 (timer.ends[0]/timer.ends[par_name]))
     print('Flat speedup: %f' %
 	    (timer.ends[0]/timer.ends[flat_name]))
+    pool.close()
+    pool.join()
     return (scale, NP, timer[0], timer[flat_name])
 
 if __name__ == '__main__':
-
     args = par_args.get_args()
     ans = big_main(args)
-    print(ans)
+    rows = []
+    for np in [2,4,8]:
+        args.procs = np
+        rows.append(big_main(args))
+    for ans in rows:
+        print('{0},{1},{2},{3}'.format(*ans))
