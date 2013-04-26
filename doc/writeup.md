@@ -174,6 +174,27 @@ This is evidenced by a problem of scale 15 on 8 cores.
 
 ![Scale 15 on hpc20](./figures/not_enough_work_py3.png)
 
+There are small differences in speedup between integer and floating point inner product. But these are not large enough to declare significant.
+
+Floating point inner product
+
+ scale   p     t_s      t_p
+------- ---   -----   ------
+25       2    8.813   5.238
+25       4    8.736   3.261
+25       8    8.752   2.305
+
+
+Integer inner product
+
+ scale   p    t_s       t_p
+------- ---  -----   -------
+25       2   8.782    5.195
+25       4   8.716    2.949
+25       8   8.704    2.350
+
+![Speedups on hpc20](./figures/floating_point_int_hpc20_scale25.png)
+
 Future Work
 ===========
 
