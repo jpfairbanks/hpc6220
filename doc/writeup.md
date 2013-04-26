@@ -5,14 +5,30 @@
 Introduction
 ============
 
-The goal of this project is to make parallel algorithms more accessible through an easy to use Python library for some basic tasks. The pursuit of this end also created some knowledge and intuition about the performance aspects of parallel programing in python. The fact that we are using OS level processes and not pthreads or OpenMP thread pools, means that some computations must be restructured in order to achieve performance. The main note of this is that accessing the data in order on a per process basis is very important.
+The goal of this project is to make parallel algorithms more accessible through an easy to use Python library for some basic tasks. 
+The pursuit of this end also created some knowledge and intuition about the performance aspects of parallel programing in python. The fact that we are using OS level processes and not pthreads or OpenMP thread pools, means that some computations must be restructured in order to achieve performance. The main note of this is that accessing the data in order on a per process basis is very important.
+
+In this project we are using only standard Python, with the builtin Array type.
+There are other methods for speeding up Python code for high performance computing. 
+For numerical methods the Numerical Python (Numpy) library that is written in C using BLAS libraries. 
+The basic operations are serial, althought the linear algebra libraries can be compiled with multithreading.
+This library has been used with PyMPI to perform large distributed HPC computations \cite{alghamdi2011petclaw}. 
+
+For people who want to write more direct code, there is the Cython framework \cite{cython}. Cython is a way to add annotations to 
+python code that will compile to C code. One benefit of Cython is that incremental improvements can be made to get better and 
+better performance.
+
+A more automatic method for speeding up the execution of Python code is the SEJITS system for compiling 
+Python code directly to a low level language \cite{sejits}.
+There are currently many specializers that are designed to work for problems such as grid and stencil codes, 
+learning Gaussian Mixture Models, and linear algebraic graph algorithms \cite{sejitsgithub}. 
 
 Process based parallelism using Multiprocessing
 ===============================================
 
 In order to expand the accessibility of parallel algorithms my project creates some basic primitives for parallel algorithms in Python and analyzes the performance of those primitives. We will discuss how one can access parallelism in Python and how these constraints make certain algorithmic and design choices an imperative for the parallel programmer in Python.
 
-For example Python has a Global Interpreter Lock (GIL) which prevents multiple threads from using the interpreter at the same time. This is the result of design decisions that were made in 1992 when Python threads were first developed [Beazley]. This GIL prevents multicore performance increases using one python interpreter. Since there is so much code dependent on features that use the GIL it was not feasible to remove it. So the Python standard library now contains a module called Multiprocessing which uses multiple operating system (OS) level processes to run multiple interpreters that can now work in parallel. Each process has its own GIL which eliminates contention. David Beazley presented a talk at PyCon 2010 that includes a thorough study of the contention for the GIL [Beazley].
+For example Python has a Global Interpreter Lock (GIL) which prevents multiple threads from using the interpreter at the same time. This is the result of design decisions that were made in 1992 when Python threads were first developed \cite{beazley2010}. This GIL prevents multicore performance increases using one python interpreter. Since there is so much code dependent on features that use the GIL it was not feasible to remove it. So the Python standard library now contains a module called Multiprocessing which uses multiple operating system (OS) level processes to run multiple interpreters that can now work in parallel. Each process has its own GIL which eliminates contention. David Beazley presented a talk at PyCon 2010 that includes a thorough study of the contention for the GIL \cite{beazley2010}.
 
 In order to protect processes from each other, the operating system keep separate memory spaces for each process. This restricts multiprocessing code in that every object that is shared between processes must go through communication channels at the OS level. These communication channels mean that the parallelism that can be used must be a coarser grain than in OpenMP shared memory programming or CILK+ programing. We demonstrate this through a comparison of two algorithms for reducing a numerical operation over an array. The PRAM style algorithm using a reduction tree is significantly out performed by both serial reduction and a partitioned reduction that uses one part for each processor.
 
@@ -84,9 +100,10 @@ One scalability issue with this partitioned approach that effects pack more than
 Inner Product
 -------------
 
-This problem is interesting because we increase the flop to mop ratio, which should be helpful for achieving scalability.
-This code allows us to compare how small differences in Python code might produce large differences in the execution.
-Here is a minimal code for inner product in python
+This task is interesting because we increase the work to data accesses ratio, which should be helpful for achieving scalability.
+
+There are two obvious ways to write an inner product in Python. The Pythonic approach is to use a comprehension to make the iteration implicit. When creating this comprehension, we can choose a list or generator form. Syntactically these are almost identical. This code perturbation allows us to compare how small differences in Python code might produce large differences in the execution.
+Here is a minimal code for an inner product in python
 
 ~~~~ {#naiveippy .python .numberLines startFrom="1"}
 def inner_product(arg):
@@ -97,7 +114,7 @@ def inner_product(arg):
     return S
 ~~~~
 
-The expression in line 3 is a generator expression. Generators are objects that encapsulates a sequence that is lazily evaluated by the interpreter.
+The expression in line 3 is a generator expression. Generators are objects that encapsulates a sequence that is lazily evaluated by the interpreter\cite{pep289}.
 That is to say that the values are not computed until they are needed for some other expression. In this code the products are needed when the sum() 
 function consumes them in a reduction. Thus this Python code would best be translated to C as:
 
@@ -115,7 +132,7 @@ double inner_product(double * xvec,
 }
 ~~~~
 
-However if we replace the parenthesis in the generator expression with square brackets, then it becomes a list comprehension. 
+However if we replace the parenthesis in the generator expression with square brackets, then it becomes a list comprehension \cite{pep209}. 
 List comprehensions are computed with eager evaluation, which produces the following best translation to C.
 
 
@@ -142,7 +159,9 @@ double inner_product_eager(double * xvec,
 ~~~~
 
 This is an example of how performance considerations are not as straightforward when programming in a higher level language like Python, when compared
-to writing C code. 
+to writing plain C code. 
+This is because a small perturbation of the original code, can lead to a large change in the semantics of the code after interpretation. 
+This also affects C code that extensively uses the preprocessor to expand macros. 
 
 Here we can see that there is not a vast difference in performance between the two implementations.
 
@@ -161,6 +180,20 @@ Even if we trust the runtime to do the right thing, we would like to perturb it 
 interesting, but beyond the scope of the project.
 
 
+ scale   p     t_s      t_p
+------- ---  -------  ----------------
+15       2    0.0213    0.022
+15       4    0.0213    0.010
+15       8    0.0212    0.016
+20       2    0.7193    0.484
+20       4    0.7123    0.290
+20       8    0.7316    0.239
+24       2    12.018    7.618
+24       4    12.156    4.941
+24       8    12.295    3.811
+
+Table: Running Times on Mirasol
+
 ![Speedup of various algorithms](./figures/speedup_mirasol.png)
 
 We can also experiment on my workstation which is an 8 core Intel Core i7 with 8GB of main memory.
@@ -176,61 +209,49 @@ This is evidenced by a problem of scale 15 on 8 cores.
 
 There are small differences in speedup between integer and floating point inner product. But these are not large enough to declare significant.
 
-Floating point inner product
 
  scale   p     t_s      t_p
-------- ---   -----   ------
+------- ---  ------- ----------------
 25       2    8.813   5.238
 25       4    8.736   3.261
 25       8    8.752   2.305
 
-
-Integer inner product
+Table: Floating point inner product
 
  scale   p    t_s       t_p
-------- ---  -----   -------
+------- --- -------  ----------
 25       2   8.782    5.195
 25       4   8.716    2.949
 25       8   8.704    2.350
+
+Table: Integer type inner product
 
 ![Speedups on hpc20](./figures/floating_point_int_hpc20_scale25.png)
 
 Future Work
 ===========
 
-The most important direction for this project to take is to explore what can be done with Cython and SEJITS which are two different approaches to comparing 
-
-Dense Matrix Vector Multiplication
-==================================
-
-The clear winner is serial Numpy. There is just no way to beat optimized C BLAS for dense numerical linear algebra.
-
-Map Reduce details
-==================
-
-One of the benefits of Map Reduce programming is that it is deadlock free. Because processes do not explicitly wait on other processes they cannot create a cycle of waits that cannot be resolved. A Map Reduce programmer can create an iterative algorithm that does not converge but they cannot create a situation where processes are waiting because of data dependence. We avoid a common problem with Hadoop that forces a reduce phase after every map phase. The serial controller logic will not be restricted in any way.
+The most important direction for this project to take is to explore what can be done with Cython and
+SEJITS which are two different approaches to compiling Python code to a lower level language.
+Cython allows a user to include type declarations to their code which allows for lower overhead 
+in numerical operations \cite{cython}.
+SEJITS is a just in time copiler that converts Python code to C/C++ or CUDA \cite{catanzaro2009sejits}. 
 
 Conclusions
 ===========
 
-Getting parallel speedup in Python is possible, however it takes some knowledge of the Python interpreter and runtime. Multiple processes must be programmed using a distributed memory algorithm, even though the communication is over OS processes instead of networked machines. 
+Getting parallel speedup in Python is possible, however it takes some knowledge of the Python interpreter and runtime. 
+Multiple processes must be programmed using a distributed memory algorithm, 
+even though the communication is over OS processes instead of networked machines. 
 This leads to using static partitioning algorithms. We also see that small changes in Python code can lead to large changes in the computation that
 is performed. 
+
+We also learned that the same features of the language that make programming easier, make understanding the performance characteristics 
+harder to understand. This experience has shown that the process of parallel programming in Python can be rewarding and useful for 
+improving the accessibility of parallel algorithms.
 
 Bibliography
 ============
 
-http://www.dabeaz.com/python/UnderstandingGIL.pdf
-
-
-Notes
-=====
-
-Compare the performance of a multiprocessing.Array and multiprocessing.RawArray Arrays have a lock that makes writes atomic.
-
-Concurrent Futures allow for a higher level api but create unexpected behavior.
-
-Map Reduce
-----------
-
-Use this to count words in some big document collection. http://docs.python.org/2/library/collections.html\#collections.Counter http://www.dalkescientific.com/writings/diary/archive/2012/01/19/concurrent.futures.html
+\bibstyle{plain}
+\bibliography{writeup.bib}
