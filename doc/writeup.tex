@@ -1,0 +1,524 @@
+\documentclass[]{IEEEtran}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\ifxetex
+  \usepackage{fontspec,xltxtra,xunicode}
+  \defaultfontfeatures{Mapping=tex-text,Scale=MatchLowercase}
+\else
+  \ifluatex
+    \usepackage{fontspec}
+    \defaultfontfeatures{Mapping=tex-text,Scale=MatchLowercase}
+  \else
+    \usepackage[utf8]{inputenc}
+  \fi
+\fi
+\usepackage{color}
+\usepackage{fancyvrb}
+\DefineShortVerb[commandchars=\\\{\}]{\|}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{{#1}}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{{#1}}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{{#1}}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{{#1}}}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{{#1}}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{{#1}}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{{#1}}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{{#1}}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{{#1}}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{{#1}}}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{{#1}}}
+\newcommand{\RegionMarkerTok}[1]{{#1}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{{#1}}}}
+\newcommand{\NormalTok}[1]{{#1}}
+\usepackage{ctable}
+\usepackage{float} % provides the H option for float placement
+\usepackage{graphicx}
+% We will generate all images so they have a width \maxwidth. This means
+% that they will get their normal width if they fit onto the page, but
+% are scaled down if they would overflow the margins.
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth
+\else\Gin@nat@width\fi}
+\makeatother
+\let\Oldincludegraphics\includegraphics
+\renewcommand{\includegraphics}[1]{\Oldincludegraphics[width=\maxwidth]{#1}}
+\ifxetex
+  \usepackage[setpagesize=false, % page size defined by xetex
+              unicode=false, % unicode breaks when used with xetex
+              xetex,
+              colorlinks=true,
+              linkcolor=blue]{hyperref}
+\else
+  \usepackage[unicode=true,
+              colorlinks=true,
+              linkcolor=blue]{hyperref}
+\fi
+\hypersetup{breaklinks=true, pdfborder={0 0 0}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\setcounter{secnumdepth}{0}
+
+\title{Parallel Primitives in Python}
+\author{James Fairbanks}
+\date{2013-04-24}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+The goal of this project is to make parallel algorithms more accessible
+through an easy to use Python library for some basic tasks. The pursuit
+of this end also created some knowledge and intuition about the
+performance aspects of parallel programing in python. The fact that we
+are using OS level processes and not pthreads or OpenMP thread pools,
+means that some computations must be restructured in order to achieve
+performance. The main note of this is that accessing the data in order
+on a per process basis is very important.
+
+In this project we are using only standard Python, with the builtin
+Array type. There are other methods for speeding up Python code for high
+performance computing. For numerical methods the Numerical Python
+(Numpy) library that is written in C using BLAS libraries. The basic
+operations are serial, althought the linear algebra libraries can be
+compiled with multithreading. This library has been used with PyMPI to
+perform large distributed HPC computations \cite{alghamdi2011petclaw}.
+
+For people who want to write more direct code, there is the Cython
+framework \cite{cython}. Cython is a way to add annotations to python
+code that will compile to C code. One benefit of Cython is that
+incremental improvements can be made to get better and better
+performance.
+
+A more automatic method for speeding up the execution of Python code is
+the SEJITS system for compiling Python code directly to a low level
+language \cite{catanzaro2009sejits}. There are currently many specializers that are
+designed to work for problems such as grid and stencil codes, learning
+Gaussian Mixture Models, and linear algebraic graph algorithms
+\cite{sejitsgithub}.
+
+\section{Process based parallelism using Multiprocessing}
+
+In order to expand the accessibility of parallel algorithms my project
+creates some basic primitives for parallel algorithms in Python and
+analyzes the performance of those primitives. We will discuss how one
+can access parallelism in Python and how these constraints make certain
+algorithmic and design choices an imperative for the parallel programmer
+in Python.
+
+For example Python has a Global Interpreter Lock (GIL) which prevents
+multiple threads from using the interpreter at the same time. This is
+the result of design decisions that were made in 1992 when Python
+threads were first developed \cite{beazley2010}. This GIL prevents
+multicore performance increases using one python interpreter. Since
+there is so much code dependent on features that use the GIL it was not
+feasible to remove it. So the Python standard library now contains a
+module called Multiprocessing which uses multiple operating system (OS)
+level processes to run multiple interpreters that can now work in
+parallel. Each process has its own GIL which eliminates contention.
+David Beazley presented a talk at PyCon 2010 that includes a thorough
+study of the contention for the GIL \cite{beazley2010}.
+
+In order to protect processes from each other, the operating system keep
+separate memory spaces for each process. This restricts multiprocessing
+code in that every object that is shared between processes must go
+through communication channels at the OS level. These communication
+channels mean that the parallelism that can be used must be a coarser
+grain than in OpenMP shared memory programming or CILK+ programing. We
+demonstrate this through a comparison of two algorithms for reducing a
+numerical operation over an array. The PRAM style algorithm using a
+reduction tree is significantly out performed by both serial reduction
+and a partitioned reduction that uses one part for each processor.
+
+\subsection{Using the module}
+
+The multiprocessing module provides access to multiple process using a
+similar interface as pthreads. Because of the overhead of spawning OS
+processes or pthreads, the module provides a Pool class which
+encapsulates some state about a collection of worker processes and make
+using multiple processes simpler. Tasks can be submitted to the pool. A
+task corresponds to a function and a tuple of arguments to use for the
+function call. This is considered the manual way to use a pool of
+workers.
+
+As a higher level interface to this pool there are several higher order
+functions to make using this pool more concise. These functions are all
+conceptually a map, but differ based on their demand for ordered
+results, and blocking the calling thread. A map operation takes a
+function and a sequence of argument tuples and evaluates the function on
+each element of the sequence.
+
+Most of the code presented here uses pool.map(f, args) which takes a
+function and sequence of arguments to that function and returns a
+sequence of results. This version blocks the calling thread until all
+results are available. Another version of map, pool.map\_async(f, args)
+does not block and returns immediately. An asynchronous map returns a
+sequence of objects that contain information about their state and the
+value that was returned by evaluating the function f in parallel.
+Because asynchronous map does not block, the result objects must be
+waited on individually. An exception is raised if a user attempts to
+retrieve a result that has not yet been computed. This protects code
+consuming these results from using uninitialized values in further
+computations. Asynchronous maps are more suited to providing concurrency
+than parallelism because the results can be processed as they arrive,
+however for our purposes waiting for all results should give better
+cache performance as we can traverse arrays in order.
+
+A minimal working example of a parallel code in python is displayed
+below. This code computes the square roots of some small integers. We
+can see that this is an easy way to access multi-core processors. One
+benefit of using Python is the ease of passing functions as arguments to
+other functions. This allows for higher level programming.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,]
+\CharTok{import} \NormalTok{multiprocessing}
+\CharTok{import} \NormalTok{math}
+
+\CommentTok{# make a problem}
+\NormalTok{NP = }\DecValTok{8}
+\NormalTok{f = math.sqrt}
+\NormalTok{argument_seq = }\DataTypeTok{range}\NormalTok{(}\DecValTok{8}\NormalTok{)}
+
+\CommentTok{# solve it in parallel}
+\NormalTok{pool = multiprocessing.Pool(processes=NP)}
+\NormalTok{result_seq = pool.}\DataTypeTok{map}\NormalTok{(f, argument_seq)}
+\end{Highlighting}
+\end{Shaded}
+\section{For native python}
+
+\subsection{Map}
+
+What is the overhead of the dynamic scheduler? How does chunk size
+affect the performance I seem to have found that log(N) provides a good
+chunk size.
+
+\subsection{Reduction}
+
+Should you do the log(P) depth solution where each processor adds the
+adjacent elements of the array together until only one element remains?
+Or should the work be cut up into the largest possible serial chunks to
+be processed sequentially. The flat approach with each of the $p$
+processors conquering $\frac{n}{p}$ of the work performs better as the
+size of the partitions increases. This means that for a fixed $p$ more
+work elements means better speedup. I believe this has to do with the
+overhead associated with forking OS level processes and function call
+overhead.
+
+I implemented both a reduction tree and a partitioned algorithm for
+reduction. The reduction tree takes the even and odd elements and
+combines them in pairs. Each pair
+
+\begin{verbatim}
+    tmp[i] = evens[i] + odds[i]
+\end{verbatim}
+is a separate task, both logically and from the perspective of the
+process pool. This is the PRAM algorithm where we assume that the number
+of processors can grow to be as large as possible. However in reality
+the number of processors is physically limited and this approach pays a
+large penalty for forming these fine grained tasks.
+
+The partitioning algorithm takes a different approach. Since we know the
+number of processors, we can partition the set of inputs contiguously
+before we start to operate concurrently. Each part is given to a single
+process which can apply the reduction in serial. These processes return
+a single value for their entire segment. Since the number of processes
+is small these $p$ values are reduced in serial by the calling process.
+This provides a significant speedup over both the serial version and the
+reduction tree versions.
+
+\subsection{Scans}
+
+I built a function that takes a serial scan and converts it to a
+parallel scan. Because of the poor performance of the divide and conquer
+approach to reduction, I chose to implement only the partitioning based
+scan. The partitioning approach is to take the problem and cut it into
+$p$ pieces that can be operated on independently in serial. Then we
+combine these results by propagating an update across each piece. In
+this case the serial process is a serial scan, and the updates are
+created by scanning the terminal elements of each piece. This produces a
+two phase algorithm.
+
+As expected the speedup of this scan is approximately a factor of two
+worse than the partitioned reducer. This is expected because there is a
+second pass over the data in order to propagate the updates. This second
+pass means that the algorithm has a factor of 2 more work than the
+serial algorithm which means that scalability is decreased by that same
+factor of 2.
+
+The partitions are done evenly and are the same in the first and second
+pass over the data. There is no attempt to load balance the workers in
+the process pool, and this will lead to scalability problems when the
+scan operation is something that has a high variance in run time.
+However for arithmetic operations this should not be an issue.
+
+There are implementation differences between the Python2 and Python3
+interpreters. One difference that I found to impact performance is the
+fact that the zip builtin, which takes two sequences and binds them
+together into one sequence of pairs, makes a list in Python2 but a
+generator in Python3. This leads to a slower \texttt{SCAN} because the
+phase where the offsets are computed and passed to the phase that
+propagates the offsets, uses a zip in order to interface with the
+process pool. This is one of the features of Python that makes writing
+high performance code less straightforward than writing them in C. In
+order to crank out the fastest Python code one must be aware about how
+the builtin functions and data structures are implemented.
+
+\subsection{Pack}
+
+The pack operation uses the primitive scan in order to identify the
+final indices of the data in the packed output. Since we are using a
+partitioned approach we do not need the indices to be propagated this
+saves the second pass over the data that we make in the general scan.
+
+We can see from the results on \emph{Mirasol} that this second pass to
+propagate the parts of the scan causes the decrease in performance. One
+scalability issue with this partitioned approach that effects pack more
+than the other primitives is that the locations of non-zero entries in
+the mask will have an impact on the run time of each processor.
+Processors that are assigned many non-zero entries will perform many
+memory requests which will not be load balanced. However we are testing
+on a uniformly random problem, so this effect should be minimal on
+average.
+
+\subsection{Inner Product}
+
+This task is interesting because we increase the work to data accesses
+ratio, which should be helpful for achieving scalability.
+
+There are two obvious ways to write an inner product in Python. The
+Pythonic approach is to use a comprehension to make the iteration
+implicit. When creating this comprehension, we can choose a list or
+generator form. Syntactically these are almost identical. This code
+perturbation allows us to compare how small differences in Python code
+might produce large differences in the execution. Here is a minimal code
+for an inner product in python
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,]
+\KeywordTok{def} \NormalTok{inner_product(arg):}
+    \NormalTok{xvec, yvec = arg[}\DecValTok{0}\NormalTok{], arg[}\DecValTok{1}\NormalTok{]}
+    \NormalTok{prods = (xvec[i] * yvec[i] }
+              \KeywordTok{for} \NormalTok{i in }\DataTypeTok{range}\NormalTok{(}\DataTypeTok{len}\NormalTok{(xvec)))}
+    \NormalTok{S = }\DataTypeTok{sum}\NormalTok{(prods)}
+    \KeywordTok{return} \NormalTok{S}
+\end{Highlighting}
+\end{Shaded}
+The expression in line 3 is a generator expression. Generators are
+objects that encapsulates a sequence that is lazily evaluated by the
+interpreter\cite{pep289}. That is to say that the values are not
+computed until they are needed for some other expression. In this code
+the products are needed when the sum() function consumes them in a
+reduction. Thus this Python code would best be translated to C as:
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,]
+\DataTypeTok{double} \NormalTok{inner_product(}\DataTypeTok{double} \NormalTok{* xvec,}
+                     \DataTypeTok{double} \NormalTok{* yvec,}
+                     \DataTypeTok{int64_t} \NormalTok{len)}
+\NormalTok{\{}
+    \DataTypeTok{double} \NormalTok{S = }\DecValTok{0}\NormalTok{;}
+    \KeywordTok{for} \NormalTok{(}\DataTypeTok{int64_t} \NormalTok{i=}\DecValTok{0}\NormalTok{; i<len, ++i)}
+    \NormalTok{\{}
+        \NormalTok{S +=(xvec[i] * yvec[i]);}
+    \NormalTok{\}}
+    \KeywordTok{return} \NormalTok{S;}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+However if we replace the parenthesis in the generator expression with
+square brackets, then it becomes a list comprehension \cite{pep209}.
+List comprehensions are computed with eager evaluation, which produces
+the following best translation to C.
+
+\begin{Shaded}
+\begin{Highlighting}[numbers=left,,]
+\DataTypeTok{double} \NormalTok{inner_product_eager(}\DataTypeTok{double} \NormalTok{* xvec,}
+                           \DataTypeTok{double} \NormalTok{* yvec,}
+                           \DataTypeTok{int64_t} \NormalTok{len)}
+\NormalTok{\{}
+    \NormalTok{prods = malloc(len*}\KeywordTok{sizeof}\NormalTok{(}\DataTypeTok{double}\NormalTok{));}
+    \DataTypeTok{double} \NormalTok{S = }\DecValTok{0}\NormalTok{;}
+    \KeywordTok{for} \NormalTok{(}\DataTypeTok{int64_t} \NormalTok{i=}\DecValTok{0}\NormalTok{; i<len, ++i)}
+    \NormalTok{\{}
+        \NormalTok{prods[i] = (xvec[i] * yvec[i]);}
+    \NormalTok{\}}
+
+    \KeywordTok{for} \NormalTok{(}\DataTypeTok{int64_t} \NormalTok{i=}\DecValTok{0}\NormalTok{; i<len, ++i)}
+    \NormalTok{\{}
+        \NormalTok{S += prods[i];}
+    \NormalTok{\}}
+
+    \NormalTok{free(prods);}
+    \KeywordTok{return} \NormalTok{S;}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+This is an example of how performance considerations are not as
+straightforward when programming in a higher level language like Python,
+when compared to writing plain C code. This is because a small
+perturbation of the original code, can lead to a large change in the
+semantics of the code after interpretation. This also affects C code
+that extensively uses the preprocessor to expand macros.
+
+Here we can see that there is not a vast difference in performance
+between the two implementations.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{./figures/inner_product_compare_speedup_mirasol.png}
+\caption{Compare lazy evaluation to eager evaluation}
+\end{figure}
+
+\section{Results}
+
+We can compare the different algorithms to each other on the same
+problem size on the same machine. The follow results are from running
+the algorithms on \emph{Mirasol} with cores counts 2, 4, 8, 16, 32. The
+problem is sized $2^{25}$, ie. scale 25, with scan, pack, and inner
+product using twice the memory because they are binary operations. The
+machine is an Intel Westmere with 4 sockets each with 10 cores each. I
+did not investigate any hyper-threading scenarios. One issue with using
+a large system like \emph{Mirasol} is that the maximum memory footprint
+is of multiprocessing Array class is $2^{32}$ even though this is a tiny
+fraction of the 256GB of main memory that \emph{Mirasol} possesses. Thus
+the entire data set can fit into the memory of one socket of
+\emph{Mirasol}. However Python does not give control of memory
+allocation at a granularity that can allow me to explore NUMA. One down
+side of higher level languages is that certain processes are black boxes
+handled by the runtime. Even if we trust the runtime to do the right
+thing, we would like to perturb it to measure the effects of different
+runtime design decisions. This investigation would be interesting, but
+beyond the scope of the project.
+
+\ctable[caption = Running Times on Mirasol,
+pos = H, center, botcap]{cccc}
+{% notes
+}
+{% rows
+\FL
+scale & p & t\_s & t\_p
+\ML
+15 & 2 & 0.0213 & 0.022
+\\\noalign{\medskip}
+15 & 4 & 0.0213 & 0.010
+\\\noalign{\medskip}
+15 & 8 & 0.0212 & 0.016
+\\\noalign{\medskip}
+20 & 2 & 0.7193 & 0.484
+\\\noalign{\medskip}
+20 & 4 & 0.7123 & 0.290
+\\\noalign{\medskip}
+20 & 8 & 0.7316 & 0.239
+\\\noalign{\medskip}
+24 & 2 & 12.018 & 7.618
+\\\noalign{\medskip}
+24 & 4 & 12.156 & 4.941
+\\\noalign{\medskip}
+24 & 8 & 12.295 & 3.811
+\LL
+}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{./figures/speedup_mirasol.png}
+\caption{Speedup of various algorithms}
+\end{figure}
+
+We can also experiment on my workstation which is an 8 core Intel Core
+i7 with 8GB of main memory. This machine is used to compare the effects
+of Python2 to Python3 on the scan primitive.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{./figures/speedup_hpc20.png}
+\caption{Speedups on hpc20}
+\end{figure}
+
+We can see that if there are too many processors and not enough work,
+then the scalability of the algorithms is decreased. This is evidenced
+by a problem of scale 15 on 8 cores.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{./figures/not_enough_work_py3.png}
+\caption{Scale 15 on hpc20}
+\end{figure}
+
+There are small differences in speedup between integer and floating
+point inner product. But these are not large enough to declare
+significant.
+
+\ctable[caption = Floating point inner product,
+pos = H, center, botcap]{cccc}
+{% notes
+}
+{% rows
+\FL
+scale & p & t\_s & t\_p
+\ML
+25 & 2 & 8.813 & 5.238
+\\\noalign{\medskip}
+25 & 4 & 8.736 & 3.261
+\\\noalign{\medskip}
+25 & 8 & 8.752 & 2.305
+\LL
+}
+
+\ctable[caption = Integer type inner product,
+pos = H, center, botcap]{cccc}
+{% notes
+}
+{% rows
+\FL
+scale & p & t\_s & t\_p
+\ML
+25 & 2 & 8.782 & 5.195
+\\\noalign{\medskip}
+25 & 4 & 8.716 & 2.949
+\\\noalign{\medskip}
+25 & 8 & 8.704 & 2.350
+\LL
+}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{./figures/floating_point_int_hpc20_scale25.png}
+\caption{Speedups on hpc20}
+\end{figure}
+
+\section{Future Work}
+
+The most important direction for this project to take is to explore what
+can be done with Cython and SEJITS which are two different approaches to
+compiling Python code to a lower level language. A clever combination 
+of multiprocessing and compiled native code will be more powerful, than either
+alone. Another avenue for future work would be to investigate more layers of the 
+Python interpreter to identify exactly where there are elements that need the grantees of
+serial execution. This would be helpful in alleviating the burden of the GIL.
+
+\section{Conclusions}
+
+Getting parallel speedup in Python is possible, however it takes some
+knowledge of the Python interpreter and runtime. Multiple processes must
+be programmed using a distributed memory algorithm, even though the
+communication is over OS processes instead of networked machines. This
+leads to using static partitioning algorithms. We also see that small
+changes in Python code can lead to large changes in the computation that
+is performed.
+
+We also learned that the same features of the language that make
+programming easier, make understanding the performance characteristics
+harder to understand. This experience has shown that the process of
+parallel programming in Python can be rewarding and useful for improving
+the accessibility of parallel algorithms.
+
+\section{Bibliography}
+
+\bibliographystyle{IEEEtran}
+\bibliography{writeup.bib}
+
+\end{document}
