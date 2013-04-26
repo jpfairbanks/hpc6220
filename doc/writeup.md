@@ -28,17 +28,17 @@ Most of the code presented here uses pool.map(f, args) which takes a function an
 A minimal working example of a parallel code in python is displayed below. This code computes the square roots of some small integers. We can see that this is an easy way to access multi-core processors. One benefit of using Python is the ease of passing functions as arguments to other functions. This allows for higher level programming.
 
 ~~~~ {#minimalpy .python .numberLines startFrom="1"}
-    import multiprocessing
-    import math
+import multiprocessing
+import math
 
-    # make a problem
-    NP = 8
-    f = math.sqrt
-    argument_seq = range(8)
+# make a problem
+NP = 8
+f = math.sqrt
+argument_seq = range(8)
 
-    # solve it in parallel
-    pool = multiprocessing.Pool(processes=NP)
-    result_seq = pool.map(f, argument_seq)
+# solve it in parallel
+pool = multiprocessing.Pool(processes=NP)
+result_seq = pool.map(f, argument_seq)
 ~~~~
 
 For native python
@@ -89,11 +89,12 @@ This code allows us to compare how small differences in Python code might produc
 Here is a minimal code for inner product in python
 
 ~~~~ {#naiveippy .python .numberLines startFrom="1"}
-    def serial_inner_product(arg):
-        xvec, yvec = arg[0], arg[1]
-        prods = ( xvec[i] * yvec[i] for i in range(len(xvec)))
-        S = sum(prods)
-        return S
+def inner_product(arg):
+    xvec, yvec = arg[0], arg[1]
+    prods = (xvec[i] * yvec[i] 
+              for i in range(len(xvec)))
+    S = sum(prods)
+    return S
 ~~~~
 
 The expression in line 3 is a generator expression. Generators are objects that encapsulates a sequence that is lazily evaluated by the interpreter.
@@ -101,15 +102,17 @@ That is to say that the values are not computed until they are needed for some o
 function consumes them in a reduction. Thus this Python code would best be translated to C as:
 
 ~~~~ {#lazyCip .c .numberLines startFrom="1"}
-    double serial_inner_product(double * xvec,
-                                double * yvec,
-                                int64_t len){
-        double S = 0;
-        for (int64_t i=0; i<len, ++i){
-            S +=(xvec[i] * yvec[i]);
-        }
-        return S;
+double inner_product(double * xvec,
+                     double * yvec,
+                     int64_t len)
+{
+    double S = 0;
+    for (int64_t i=0; i<len, ++i)
+    {
+        S +=(xvec[i] * yvec[i]);
     }
+    return S;
+}
 ~~~~
 
 However if we replace the parenthesis in the generator expression with square brackets, then it becomes a list comprehension. 
@@ -117,22 +120,25 @@ List comprehensions are computed with eager evaluation, which produces the follo
 
 
 ~~~~ {#eagerCip .c .numberLines startFrom="1"}
-    double serial_inner_product_eager(double * xvec,
-                                      double * yvec,
-                                      int64_t len){
-        prods = malloc(len*sizeof(double));
-        double S = 0;
-        for (int64_t i=0; i<len, ++i){
-            prods[i] = (xvec[i] * yvec[i]);
-        }
-        
-        for (int64_t i=0; i<len, ++i){
-            S += prods[i];
-        }
-        
-        free(prods);
-        return S;
+double inner_product_eager(double * xvec,
+                           double * yvec,
+                           int64_t len)
+{
+    prods = malloc(len*sizeof(double));
+    double S = 0;
+    for (int64_t i=0; i<len, ++i)
+    {
+        prods[i] = (xvec[i] * yvec[i]);
     }
+    
+    for (int64_t i=0; i<len, ++i)
+    {
+        S += prods[i];
+    }
+    
+    free(prods);
+    return S;
+}
 ~~~~
 
 This is an example of how performance considerations are not as straightforward when programming in a higher level language like Python, when compared
@@ -156,6 +162,22 @@ interesting, but beyond the scope of the project.
 
 
 ![Speedup of various algorithms](./figures/speedup_mirasol.png)
+
+We can also experiment on my workstation which is an 8 core Intel Core i7 with 8GB of main memory.
+This machine is used to compare the effects of Python2 to Python3 on the scan primitive.
+
+
+![Speedups on hpc20](./figures/speedup_hpc20.png)
+
+We can see that if there are too many processors and not enough work, then the scalability of the algorithms is decreased.
+This is evidenced by a problem of scale 15 on 8 cores.
+
+![Scale 15 on hpc20](./figures/not_enough_work_py3.png)
+
+Future Work
+===========
+
+The most important direction for this project to take is to explore what can be done with Cython and SEJITS which are two different approaches to comparing 
 
 Dense Matrix Vector Multiplication
 ==================================
